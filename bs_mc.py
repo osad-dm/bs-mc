@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 import scipy as sc
-
+#git хабу привет
 
 
 class System:
