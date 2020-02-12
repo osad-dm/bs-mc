@@ -114,7 +114,7 @@ def bs_me_solve(entry_state, f_dim, n_wg, C_err, gamma):
 
 
 
-initial_state = [1, 2, 0, 1]
+initial_state = [1, 3, 0, 1]
 N_MC = 10
 
 
