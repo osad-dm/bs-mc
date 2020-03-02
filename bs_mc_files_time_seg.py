@@ -2,6 +2,7 @@ from qutip import *
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import time
 import scipy as sc
 #git хабу привет
 
@@ -106,18 +107,18 @@ def bs_me_solve(entry_state, f_dim, n_wg, C_err, gamma):
     col_ops = qws1.gen_c_ops(gamma)
     result_1 = mesolve(qws1.H, psi0, times, col_ops)
     result_2 = mesolve(qws2.H, result_1.states[1], times, col_ops)
-    result_3 = mesolve(qws2.H, result_2.states[1], times, col_ops)
+    result_3 = mesolve(qws1.H, result_2.states[1], times, col_ops)
     result_4 = mesolve(qws2.H, result_3.states[1], times, col_ops)
-    result_5 = mesolve(qws2.H, result_4.states[1], times, col_ops)
+    result_5 = mesolve(qws1.H, result_4.states[1], times, col_ops)
     result_6 = mesolve(qws2.H, result_5.states[1], times, col_ops)
     # ress3 = mesolve(qws1.H, ress2.states[1], times, col_ops)
     result = result_6.states[1]
 
-    return result
+    return result_1.states[1], result_2.states[1], result_3.states[1], result_4.states[1], result_5.states[1], result_6.states[1]
 
 
-initial_state = [1, 0, 0, 0]
-N_MC = 1
+initial_state = [0, 1, 0, 0]
+N_MC = 1000
 
 
 num_wg = len(initial_state)
@@ -125,13 +126,14 @@ dim = sum(initial_state) + 1
 psi_vector = np.zeros(num_wg)
 psi_vector = psi_vector.astype(int)
 psi_vector = [i for i in initial_state]
-#fid = []
-fid_1 = []
+
+
 gamma_list = [i * 0.1 for i in range(0, 9)]
 se_list = [i * 0.05 for i in range(0, 11)]
-with open('fid_'+str(initial_state)+'.txt', 'w') as f:
-    f.writelines('gamma\tC_err\tav\tmax\tmin\n')
-with open('fid_'+str(initial_state)+'_raw.txt', 'w') as f:
+start = time.time()
+with open('sfid_'+str(initial_state)+'.txt', 'w') as f:
+    f.writelines('seg\tgamma\tC_err\tav\tmax\tmin\n')
+with open('sfid_'+str(initial_state)+'_raw.txt', 'w') as f:
     f.writelines('')
 
 ideal_case = bs_me_solve(psi_vector, dim, num_wg, 0, 0)
@@ -140,15 +142,26 @@ for i in gamma_list:
         fid = []
         for k in range(0, N_MC):
             result_bs = bs_me_solve(psi_vector, dim, num_wg, C_err=j, gamma=i)
-            final_result = fock_trans(result_bs.diag(), dim, num_wg)
-            fid.append(fidelity(ideal_case, result_bs))
-        with open('fid_'+str(initial_state)+'.txt', 'a') as f:
-            f.writelines(str(i) + '\t' + str(j) + '\t' + str(sum(fid)/float(len(fid))) + '\t' + str(max(fid)) + '\t' + str(min(fid))+'\n')
-        with open('fid_'+str(initial_state)+'_raw.txt', 'a') as f:
+            #final_result = [fock_trans(i.diag(), dim, num_wg) for i in result_bs]
+            fid.append([fidelity(ideal_case[p], r) for p, r in enumerate(result_bs)])
+        summer =[0, 0, 0, 0, 0, 0]
+        maximum = [-1, -1, -1, -1, -1, -1]
+        minimum = [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf]
+        for res in fid:
+            for k, res_seg in enumerate(res):
+                summer[k] += res_seg
+                maximum[k] = max(maximum[k], res_seg)
+                minimum[k] = min(minimum[k], res_seg)
+        with open('sfid_'+str(initial_state)+'.txt', 'a') as f:
+            for k in range(0, len(summer)):
+                f.writelines(str(k+1)+'\t'+str(i) + '\t' + str(j) + '\t' + str(summer[k] / N_MC) + '\t' + str(maximum[k]) + '\t' + str(minimum[k])+'\n')
+        with open('sfid_'+str(initial_state)+'_raw.txt', 'a') as f:
             f.writelines(str(fid)+'\n')
-            print(str(fid))
-        #fid_1.append(sum(fid)/float(len(fid)))
+            #print(str(fid))
 
+end = time.time()
+with open('time_'+str(initial_state)+'_raw.txt', 'w') as f:
+    f.writelines(str(end-start))
 
 '''#print(sum(fid)/float(len(fid)))
 fig, axes = plt.subplots()
